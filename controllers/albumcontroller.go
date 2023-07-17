@@ -7,6 +7,7 @@ import (
 
 	"example/web-service-gin/database"
 	"example/web-service-gin/entities"
+	"example/web-service-gin/requests"
 )
 
 func GetAlbums(c *gin.Context) {
@@ -16,22 +17,56 @@ func GetAlbums(c *gin.Context) {
     c.IndentedJSON(http.StatusOK, gin.H{"data": albums})
 }
 
-func GetAlbumByID(c *gin.Context) {
-    id := c.Param("id")
+func GetAlbumByID(c *gin.Context) {    
     var album entities.Album
+    if err := database.Instance.Where("id = ?", c.Param("id")).First(&album).Error; err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+        return
+      }
 
-    database.Instance.Find(&album, id)
-
-    c.IndentedJSON(http.StatusOK, album)
+    c.IndentedJSON(http.StatusOK, gin.H{"data": album})
 }
 
 func PostAlbums(c *gin.Context) {
     var newAlbum entities.Album
 
-    if err := c.BindJSON(&newAlbum); err != nil {
+    if err := c.ShouldBindJSON(&newAlbum); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+      }
+
+    database.Instance.Create(&newAlbum)
+    c.IndentedJSON(http.StatusOK, gin.H{"data": newAlbum})
+}
+
+func UpdateAlbum(c *gin.Context){
+    var album entities.Album
+
+    if err := database.Instance.Where("id = ?", c.Param("id")).First(&album).Error; err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+        return
+      }
+
+    var input requests.UpdateAlbumRequest
+    if err := c.ShouldBindJSON(&input); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
 
-    database.Instance.Create(&newAlbum)
-    c.IndentedJSON(http.StatusCreated, newAlbum)
+    database.Instance.Model(&album).Updates(input)
+    
+    c.IndentedJSON(http.StatusOK, gin.H{"data": album})
 }
+
+func DeleteAlbum(c *gin.Context) {
+    var album entities.Album
+    if err := database.Instance.Where("id = ?", c.Param("id")).First(&album).Error; err != nil {
+      c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+      return
+    }
+  
+    database.Instance.Delete(&album)
+  
+    c.JSON(http.StatusOK, gin.H{"data": true})
+  }
+  
