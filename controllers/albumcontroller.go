@@ -28,26 +28,15 @@ func GetAlbumByID(c *gin.Context) {
 }
 
 func PostAlbums(c *gin.Context) {
-    tx := database.Instance.Begin()
-
     var request requests.AlbumRequest
 
     if err := c.ShouldBindJSON(&request); err != nil {
-        c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
       }
 
     album := entities.Album{Title: request.Artist, Artist: request.Artist, Price: request.Price}
-    
-    tx.Create(&album)
-
-    if err := tx.Create(&album).Error; err != nil {
-        c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to save to Database!"})
-        tx.Rollback()
-        return
-      }
-
-    tx.Commit()
+    database.Instance.Create(&album)
     c.IndentedJSON(http.StatusOK, gin.H{"data": album})
 }
 
